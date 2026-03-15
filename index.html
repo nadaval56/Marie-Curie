@@ -446,12 +446,21 @@
     "גיליתי שני יסודות כימיים חדשים שאף אחד לא הכיר אותם לפני.",
     "חקרתי תופעה מרתקת שנקראת רדיואקטיביות – כאשר חומרים פולטים קרינה.",
     "אחד היסודות שגיליתי נקרא על שם מולדתי.",
+    "עבדתי יחד עם בעלי – שהיה גם הוא מדען – ופרסמנו יחד את תגליותינו בעולם.",
     "הייתי האישה הראשונה בהיסטוריה שזכתה בפרס נובל."
   ];
 
-  const SCORES      = [100, 80, 60, 40, 20];
-  const TIMER_SECS  = 30;
-  const CIRCUMF     = 2 * Math.PI * 22; // ~138.2
+  const SCORES     = [100, 85, 70, 55, 35, 15];
+  const TIMER_SECS = 30;
+  const CIRCUMF    = 2 * Math.PI * 22;
+
+  // כל הכתיבים המקובלים של מארי קירי
+  const ACCEPTED = [
+    'מארי קירי', 'מרי קירי', 'מרי קרי', 'מארי קרי',
+    'מארי קיר',  'מרי קיר',  'מרי כירי', 'מרי כרי',
+    'מארי כירי', 'מארי כרי', 'מרי קורי', 'מארי קורי',
+    'מארי קיירי','מרי קיירי'
+  ];
 
   let cluesRevealed = 0;
   let timerSec      = TIMER_SECS;
@@ -487,6 +496,54 @@
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
       osc.start(audioCtx.currentTime);
       osc.stop(audioCtx.currentTime + 0.08);
+    } catch(e) {}
+  }
+
+  function playClueReveal() {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    try {
+      // שתי נגינות עולות – כמו "פינג" של פתיחה
+      [[523, 0], [784, 0.12]].forEach(([freq, delay]) => {
+        const osc  = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+        gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + delay + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + 0.35);
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + 0.4);
+      });
+    } catch(e) {}
+  }
+
+  function playVictory() {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    try {
+      // מנגינת ניצחון: C E G C (אוקטבה גבוהה)
+      const notes = [
+        [523, 0.0,  0.18],
+        [659, 0.18, 0.18],
+        [784, 0.36, 0.18],
+        [523, 0.54, 0.08],
+        [523, 0.62, 0.08],
+        [1047,0.70, 0.45],
+      ];
+      notes.forEach(([freq, start, dur]) => {
+        const osc  = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + start);
+        gain.gain.setValueAtTime(0, audioCtx.currentTime + start);
+        gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + start + dur);
+        osc.start(audioCtx.currentTime + start);
+        osc.stop(audioCtx.currentTime + start + dur + 0.05);
+      });
     } catch(e) {}
   }
 
@@ -564,6 +621,7 @@
     card.innerHTML = `<span class="clue-num">${cluesRevealed}</span>
                       <span class="clue-text">${CLUES[idx]}</span>`;
     list.appendChild(card);
+    playClueReveal();
 
     // update score display
     const pts = SCORES[cluesRevealed - 1] ?? 20;
@@ -583,9 +641,10 @@
     const val   = input.value.trim();
     const msg   = document.getElementById('wrongMsg');
 
-    // normalise
     const normalise = s => s.replace(/\s+/g,' ').trim();
-    if (normalise(val) === 'מארי קירי') {
+    const norm = normalise(val);
+
+    if (ACCEPTED.includes(norm)) {
       winGame();
       return;
     }
@@ -609,6 +668,7 @@
   /* ── win ── */
   function winGame() {
     clearInterval(timerInterval);
+    playVictory();
 
     const score = SCORES[cluesRevealed - 1] ?? 20;
 
@@ -617,7 +677,7 @@
     ws.style.display = 'flex';
     document.getElementById('winScoreDisplay').textContent = score;
 
-    const medals = ['🥇','🥈','🥉','🎖️','🏅'];
+    const medals = ['🥇','🥈','🥉','🎖️','🏅','🎗️'];
     document.getElementById('winDetail').innerHTML =
       `ניחשתם אחרי <strong>${cluesRevealed}</strong> רמז${cluesRevealed===1?'':'ים'} ${medals[cluesRevealed-1]}<br>
        ניסיונות שגויים: <strong>${wrongAttempts}</strong>`;
